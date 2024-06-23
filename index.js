@@ -7,20 +7,13 @@ app.use(bodyParser.json());
 
 const port = 3000;
 
-// Mostra HTML en ruta principal
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-// GET de las canciones
-app.get("/canciones", (req, res) => {
+const getRepertorio = (req, res) => {
   fs.readFile("repertorio.json", (err, data) => {
     err ? res.send(err) : res.send(JSON.parse(data));
   });
-});
+};
 
-// POST de las canciones
-app.post("/canciones", (req, res) => {
+const postCanciones = (req, res) => {
   fs.readFile("repertorio.json", (err, data) => {
     if (err) {
       res.send(err);
@@ -39,10 +32,36 @@ app.post("/canciones", (req, res) => {
       );
     }
   });
-});
+};
 
-// PUT de las canciones
-app.put("/canciones/:id", (req, res) => {
+const deleteCanciones = (req, res) => {
+  const cancionId = req.params.id;
+
+  fs.readFile("repertorio.json", (err, data) => {
+    if (err) {
+      return res.status(500).send("Error reading file");
+    }
+
+    let repertorio = JSON.parse(data);
+    const initialLength = repertorio.length;
+    repertorio = repertorio.filter((cancion) => cancion.id !== cancionId);
+
+    if (repertorio.length === initialLength) {
+      return res.status(404).send("Canción no encontrada");
+    }
+
+    fs.writeFile(
+      "repertorio.json",
+      JSON.stringify(repertorio, null, 2),
+      (err) =>
+        err
+          ? res.status(500).send("Error al eliminar la canción")
+          : res.send("Canción eliminada")
+    );
+  });
+};
+
+const updateCanciones = (req, res) => {
   const songId = req.params.id;
   const updatedSong = req.body;
 
@@ -68,35 +87,24 @@ app.put("/canciones/:id", (req, res) => {
             : res.status(404).send("Canción no encontrada");
         })();
   });
+};
+
+// Mostra HTML en ruta principal
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
+
+// GET de las canciones
+app.get("/canciones", getRepertorio);
+
+// POST de las canciones
+app.post("/canciones", postCanciones);
+
+// PUT de las canciones
+app.put("/canciones/:id", updateCanciones);
 
 // DELETE de las canciones
-app.delete("/canciones/:id", (req, res) => {
-  const cancionId = req.params.id;
-
-  fs.readFile("repertorio.json", (err, data) => {
-    if (err) {
-      return res.status(500).send("Error reading file");
-    }
-
-    let repertorio = JSON.parse(data);
-    const initialLength = repertorio.length;
-    repertorio = repertorio.filter((cancion) => cancion.id !== cancionId);
-
-    if (repertorio.length === initialLength) {
-      return res.status(404).send("Canción no encontrada");
-    }
-
-    fs.writeFile(
-      "repertorio.json",
-      JSON.stringify(repertorio, null, 2),
-      (err) =>
-        err
-          ? res.status(500).send("Error al eliminar la canción")
-          : res.send("Canción eliminada")
-    );
-  });
-});
+app.delete("/canciones/:id", deleteCanciones);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
